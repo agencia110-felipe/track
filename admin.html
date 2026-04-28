@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konverta Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f12;
+    --bg2: #161920;
+    --bg3: #1e2230;
+    --border: #2a2f3e;
+    --border2: #353c50;
+    --text: #e8eaf0;
+    --text2: #8b91a8;
+    --text3: #555d78;
+    --accent: #4f6ef7;
+    --accent2: #3a57e8;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.1);
+    --yellow: #f59e0b;
+    --yellow-bg: rgba(245,158,11,0.1);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.1);
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 24px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-logo { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .sidebar-logo span { font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+  .sidebar-logo span em { color: var(--accent); font-style: normal; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; color: var(--text2); transition: all .15s; font-size: 13.5px; border-left: 2px solid transparent; }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,110,247,0.06); }
+  .nav-icon { width: 16px; height: 16px; opacity: .7; }
+  .main { padding: 32px 40px; max-width: 1100px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Header */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+  .page-sub { color: var(--text2); font-size: 13px; margin-top: 3px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: var(--radius); font-family: var(--sans); font-size: 13.5px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { background: var(--bg3); color: var(--text); }
+  .btn-sm { padding: 6px 11px; font-size: 12.5px; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+
+  /* Cards */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 16px; }
+
+  /* Client list */
+  .client-grid { display: grid; gap: 12px; }
+  .client-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; cursor: pointer; transition: all .15s; }
+  .client-card:hover { border-color: var(--border2); background: var(--bg3); }
+  .client-card.selected { border-color: var(--accent); background: rgba(79,110,247,0.04); }
+  .client-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .client-name { font-weight: 600; font-size: 15px; }
+  .client-domain { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Form */
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text2); margin-bottom: 7px; text-transform: uppercase; letter-spacing: .5px; }
+  .form-input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 14px; color: var(--text); font-family: var(--sans); font-size: 14px; outline: none; transition: border .15s; }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--text3); }
+  .form-textarea { min-height: 160px; font-family: var(--mono); font-size: 12px; resize: vertical; }
+  .form-hint { font-size: 12px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .tab { padding: 10px 16px; cursor: pointer; font-size: 13.5px; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Field map */
+  .field-list { display: grid; gap: 8px; }
+  .field-row { display: grid; grid-template-columns: 130px 1fr 120px auto; gap: 10px; align-items: center; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+  .field-tag { font-family: var(--mono); font-size: 11.5px; color: var(--accent); }
+  .field-selector { font-family: var(--mono); font-size: 12px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .field-type { font-size: 12px; color: var(--text3); }
+
+  /* Snippet */
+  .snippet-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--green); position: relative; cursor: pointer; }
+  .snippet-box:hover::after { content: 'Clique para copiar'; position: absolute; top: 50%; right: 16px; transform: translateY(-50%); background: var(--bg3); color: var(--text2); font-size: 11px; padding: 3px 8px; border-radius: 4px; font-family: var(--sans); }
+
+  /* DNS card */
+  .dns-card { background: var(--yellow-bg); border: 1px solid rgba(245,158,11,0.2); border-radius: var(--radius); padding: 14px 16px; }
+  .dns-card.verified { background: var(--green-bg); border-color: rgba(34,197,94,0.2); }
+  .dns-row { display: grid; grid-template-columns: 80px 1fr; gap: 10px; margin-bottom: 8px; font-size: 12.5px; }
+  .dns-key { color: var(--text2); font-weight: 500; }
+  .dns-val { font-family: var(--mono); color: var(--text); word-break: break-all; }
+
+  /* Platform tags */
+  .platform-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .platform-chip { display: flex; align-items: center; gap: 7px; padding: 6px 13px; border: 1px solid var(--border2); border-radius: 20px; font-size: 12.5px; cursor: pointer; color: var(--text2); transition: all .15s; }
+  .platform-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .platform-chip.active { border-color: var(--accent); background: rgba(79,110,247,0.08); color: var(--accent); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius); padding: 12px 18px; font-size: 13.5px; color: var(--text); z-index: 1000; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { border-color: rgba(34,197,94,0.3); }
+
+  /* Overlay */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; backdrop-filter: blur(2px); }
+  .overlay.open { display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .modal-title { font-size: 16px; font-weight: 600; }
+  .modal-close { cursor: pointer; color: var(--text3); font-size: 20px; line-height: 1; padding: 4px; }
+  .modal-body { padding: 24px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* Loading */
+  .loading { color: var(--text3); font-size: 13px; padding: 40px 0; text-align: center; }
+
+  /* Stats row */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .stat-val { font-size: 26px; font-weight: 600; letter-spacing: -1px; }
+  .stat-label { font-size: 12px; color: var(--text2); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span>kon<em>verta</em></span>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('clients')">
+        <svg class="nav-icon" fill="none" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item" onclick="showPage('new-client')">
+        <svg class="nav-icon" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Novo cliente
+      </div>
+      <div class="nav-item" onclick="showPage('settings')">
+        <svg class="nav-icon" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Configurações
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ── CLIENTES ───────────────────────────────────────── -->
+    <div id="page-clients" class="page active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Clientes</div>
+          <div class="page-sub">Gerencie os sites monitorados</div>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('new-client')">+ Novo cliente</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-val" id="stat-clients">—</div><div class="stat-label">Clientes ativos</div></div>
+        <div class="stat"><div class="stat-val" id="stat-verified">—</div><div class="stat-label">DNS verificado</div></div>
+        <div class="stat"><div class="stat-val" id="stat-events">—</div><div class="stat-label">Eventos hoje</div></div>
+        <div class="stat"><div class="stat-val" id="stat-purchases">—</div><div class="stat-label">Compras hoje</div></div>
+      </div>
+
+      <div id="client-list" class="client-grid">
+        <div class="loading">Carregando clientes...</div>
+      </div>
+    </div>
+
+    <!-- ── DETALHE DO CLIENTE ──────────────────────────────── -->
+    <div id="page-client-detail" class="page">
+      <div class="page-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="btn btn-ghost btn-sm" onclick="showPage('clients')" style="cursor:pointer">← Voltar</span>
+            <div class="page-title" id="detail-name">—</div>
+            <span id="detail-badge"></span>
+          </div>
+          <div class="page-sub" id="detail-domain"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openWebhookModal()">+ Webhook</button>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('tab-snippet')">Snippet</div>
+        <div class="tab" onclick="switchTab('tab-platforms')">Plataformas</div>
+        <div class="tab" onclick="switchTab('tab-pages')">Páginas de conversão</div>
+        <div class="tab" onclick="switchTab('tab-webhooks')">Webhooks</div>
+      </div>
+
+      <!-- Tab: Snippet -->
+      <div id="tab-snippet" class="tab-content">
+        <div class="card">
+          <div class="card-title">Snippet de instalação</div>
+          <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Cole este código no <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11.5px">&lt;head&gt;</code> do site do cliente, antes do <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11.5px">&lt;/head&gt;</code>.</p>
+          <div class="snippet-box" id="snippet-code" onclick="copySnippet()"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Export GTM</div>
+          <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Gera o container do GTM com todas as tags, variáveis e acionadores já configurados com as credenciais deste cliente. Importe em: GTM → Admin → Importar contêiner.</p>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="downloadGTM()">⬇ Baixar JSON do GTM</button>
+            <span style="font-size:12px;color:var(--text3)">Configure as plataformas antes de exportar</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Verificação de DNS</div>
+          <div id="dns-block"></div>
+          <div style="margin-top:14px">
+            <button class="btn btn-ghost btn-sm" onclick="verifyDns()">Verificar agora</button>
+            <span id="dns-verify-result" style="margin-left:12px;font-size:13px;color:var(--text2)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Plataformas -->
+      <div id="tab-platforms" class="tab-content" style="display:none">
+        <div class="card">
+          <div class="card-title">Plataformas de tracking</div>
+          <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Configure as credenciais de cada plataforma. Só são disparadas as plataformas com credenciais preenchidas.</p>
+
+          <div class="platform-grid" id="platform-chips">
+            <div class="platform-chip active" onclick="selectPlatform('meta')">Meta Ads</div>
+            <div class="platform-chip" onclick="selectPlatform('ga4')">Google Analytics 4</div>
+            <div class="platform-chip" onclick="selectPlatform('google_ads')">Google Ads</div>
+            <div class="platform-chip" onclick="selectPlatform('tiktok')">TikTok Ads</div>
+          </div>
+
+          <div id="platform-form-meta">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Pixel ID</label>
+                <input class="form-input" id="meta-pixel-id" placeholder="123456789012345">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Access Token (CAPI)</label>
+                <input class="form-input" id="meta-access-token" type="password" placeholder="EAAxxxxxxx...">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Test Event Code (opcional — apenas para testes)</label>
+              <input class="form-input" id="meta-test-code" placeholder="TEST12345">
+              <div class="form-hint">Remova em produção. Visível no Events Manager do Meta.</div>
+            </div>
+          </div>
+
+          <div id="platform-form-ga4" style="display:none">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Measurement ID</label>
+                <input class="form-input" id="ga4-measurement-id" placeholder="G-XXXXXXXXXX">
+              </div>
+              <div class="form-group">
+                <label class="form-label">API Secret</label>
+                <input class="form-input" id="ga4-api-secret" type="password" placeholder="chave_secreta">
+                <div class="form-hint">Gerado em: GA4 → Admin → Data Streams → Measurement Protocol API secrets</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="platform-form-google_ads" style="display:none">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Conversion ID</label>
+                <input class="form-input" id="gads-conversion-id" placeholder="AW-XXXXXXXXXX">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Conversion Label</label>
+                <input class="form-input" id="gads-conversion-label" placeholder="AbCdEfGhIjKlMnOp">
+              </div>
+            </div>
+          </div>
+
+          <div id="platform-form-tiktok" style="display:none">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Pixel ID</label>
+                <input class="form-input" id="tiktok-pixel-id" placeholder="C3XXX...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Access Token</label>
+                <input class="form-input" id="tiktok-access-token" type="password" placeholder="...">
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px">
+            <button class="btn btn-primary btn-sm" onclick="savePlatform()">Salvar credenciais</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Páginas de conversão -->
+      <div id="tab-pages" class="tab-content" style="display:none">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+          <button class="btn btn-primary btn-sm" onclick="openPageModal()">+ Página de conversão</button>
+        </div>
+        <div id="pages-list">
+          <div class="loading">Nenhuma página configurada ainda.</div>
+        </div>
+      </div>
+
+      <!-- Tab: Webhooks -->
+      <div id="tab-webhooks" class="tab-content" style="display:none">
+        <div id="webhooks-list"></div>
+      </div>
+    </div>
+
+    <!-- ── NOVO CLIENTE ────────────────────────────────────── -->
+    <div id="page-new-client" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Novo cliente</div>
+          <div class="page-sub">Cadastra o site do cliente na plataforma</div>
+        </div>
+      </div>
+      <div class="card" style="max-width:520px">
+        <div class="form-group">
+          <label class="form-label">Nome do cliente / empresa</label>
+          <input class="form-input" id="new-name" placeholder="Ex: Loja do João">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Domínio do site</label>
+          <input class="form-input" id="new-domain" placeholder="lojadojoao.com.br">
+          <div class="form-hint">Sem www, sem https. Apenas o domínio raiz.</div>
+        </div>
+        <button class="btn btn-primary" onclick="createClient()">Cadastrar cliente</button>
+      </div>
+    </div>
+
+    <!-- ── CONFIGURAÇÕES ──────────────────────────────────── -->
+    <div id="page-settings" class="page">
+      <div class="page-header">
+        <div class="page-title">Configurações</div>
+      </div>
+      <div class="card" style="max-width:520px">
+        <div class="card-title">Plataforma</div>
+        <div class="form-group">
+          <label class="form-label">Domínio do Konverta</label>
+          <input class="form-input" id="settings-domain" placeholder="track.suaagencia.com">
+          <div class="form-hint">Usado para gerar os snippets dos clientes.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveSettings()">Salvar</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal: Página de Conversão -->
+<div class="overlay" id="overlay-page" onclick="closeOverlay('overlay-page')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Configurar página de conversão</div>
+      <span class="modal-close" onclick="closeOverlay('overlay-page')">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome interno</label>
+        <input class="form-input" id="page-name" placeholder="Ex: Formulário de lead, Página de obrigado">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-input" id="page-type" onchange="updatePageType()">
+            <option value="lead_form">Formulário de lead</option>
+            <option value="purchase_confirm">Confirmação de compra</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Evento Meta/GA4</label>
+          <input class="form-input" id="page-event" placeholder="Lead">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Padrão de URL (deixe vazio se for por submit)</label>
+        <input class="form-input" id="page-url-pattern" placeholder="Ex: /obrigado, /checkout/success">
+        <div class="form-hint">O script dispara o evento quando a URL contém esse padrão.</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="card-title" style="margin-bottom:12px">HTML do formulário / área de conversão</div>
+      <p style="color:var(--text2);font-size:12.5px;margin-bottom:12px;line-height:1.6">Cole o HTML do formulário (do inspecionar elementos). O sistema vai extrair os campos automaticamente.</p>
+      <div class="form-group">
+        <textarea class="form-input form-textarea" id="page-html" placeholder='<form id="lead-form">
+  <input type="text" id="nome" name="nome" placeholder="Seu nome">
+  <input type="email" id="email" name="email" placeholder="Seu e-mail">
+  <input type="tel" id="telefone" name="phone" placeholder="Seu telefone">
+  <button type="submit">Enviar</button>
+</form>'></textarea>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="parseHtml()">⚡ Extrair campos do HTML</button>
+
+      <div id="parsed-fields" style="margin-top:16px;display:none">
+        <div class="card-title" style="margin-bottom:10px">Campos detectados — revise e ajuste</div>
+        <div id="fields-list" class="field-list"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('overlay-page')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePage()">Salvar página</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Webhook -->
+<div class="overlay" id="overlay-webhook" onclick="closeOverlay('overlay-webhook')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Configurar webhook de venda</div>
+      <span class="modal-close" onclick="closeOverlay('overlay-webhook')">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Plataforma de vendas</label>
+        <select class="form-input" id="wh-platform">
+          <option value="hotmart">Hotmart</option>
+          <option value="kiwify">Kiwify</option>
+          <option value="eduzz">Eduzz / Nutror</option>
+          <option value="wake">Wake Commerce</option>
+          <option value="magento">Magento</option>
+        </select>
+      </div>
+      <div id="wh-result" style="display:none">
+        <div class="card-title" style="margin-bottom:10px">URL do webhook gerada</div>
+        <div class="snippet-box" id="wh-url" onclick="copyWebhookUrl()"></div>
+        <p style="color:var(--text2);font-size:12.5px;margin-top:12px;line-height:1.6">Cole esta URL nas configurações de webhook da plataforma escolhida. Cada plataforma/cliente tem uma URL única.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeOverlay('overlay-webhook')">Fechar</button>
+      <button class="btn btn-primary" id="wh-btn" onclick="generateWebhook()">Gerar URL</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_KEY = new URLSearchParams(location.search).get('key') || '';
+const BASE = '';
+let PLATFORM_DOMAIN = localStorage.getItem('kv_domain') || 'track.suaagencia.com';
+
+// ── State ──────────────────────────────────────────────────
+let clients = [];
+let selectedClient = null;
+let currentPlatform = 'meta';
+let parsedFields = [];
+
+// ── Navigation ─────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().includes(id.split('-')[0])) n.classList.add('active');
+  });
+  if (id === 'clients') loadClients();
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).style.display = 'block';
+  event.target.classList.add('active');
+  if (tabId === 'tab-pages') loadPages();
+  if (tabId === 'tab-webhooks') loadWebhooks();
+}
+
+// ── API calls ──────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const url = BASE + path + (path.includes('?') ? '&' : '?') + 'key=' + API_KEY;
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  return res.json();
+}
+
+// ── Clients ────────────────────────────────────────────────
+async function loadClients() {
+  const data = await apiFetch('/api/admin/clients');
+  clients = data.clients || [];
+  renderClients();
+
+  document.getElementById('stat-clients').textContent = clients.filter(c => c.active).length;
+  document.getElementById('stat-verified').textContent = clients.filter(c => c.dns_verified).length;
+  document.getElementById('stat-events').textContent = clients.reduce((a,c) => a + (c.total_events||0), 0);
+  document.getElementById('stat-purchases').textContent = clients.reduce((a,c) => a + (c.total_purchases||0), 0);
+}
+
+function renderClients() {
+  const el = document.getElementById('client-list');
+  if (!clients.length) { el.innerHTML = '<div class="loading">Nenhum cliente cadastrado ainda.</div>'; return; }
+  el.innerHTML = clients.map(c => `
+    <div class="client-card ${selectedClient?.id === c.id ? 'selected' : ''}" onclick="openClient('${c.id}')">
+      <div class="client-header">
+        <span class="client-name">${c.name}</span>
+        <span class="badge ${c.dns_verified ? 'badge-green' : 'badge-yellow'}">
+          <span class="dot"></span>${c.dns_verified ? 'DNS verificado' : 'Aguardando DNS'}
+        </span>
+      </div>
+      <div class="client-domain">${c.domain}</div>
+      <div style="margin-top:10px;display:flex;gap:16px;font-size:12px;color:var(--text3)">
+        <span>${c.total_events || 0} eventos</span>
+        <span>${c.total_purchases || 0} compras</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openClient(id) {
+  selectedClient = clients.find(c => c.id === id);
+  if (!selectedClient) return;
+
+  document.getElementById('detail-name').textContent = selectedClient.name;
+  document.getElementById('detail-domain').textContent = selectedClient.domain;
+  document.getElementById('detail-badge').innerHTML = `<span class="badge ${selectedClient.dns_verified ? 'badge-green' : 'badge-yellow'}"><span class="dot"></span>${selectedClient.dns_verified ? 'DNS ok' : 'DNS pendente'}</span>`;
+
+  // Snippet
+  document.getElementById('snippet-code').textContent =
+    `<script src="https://${PLATFORM_DOMAIN}/c/${selectedClient.id}.js" async><\/script>`;
+
+  // DNS block
+  renderDnsBlock();
+
+  showPage('client-detail');
+
+  // Reset tabs
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+  document.getElementById('tab-snippet').style.display = 'block';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab')[0].classList.add('active');
+}
+
+function renderDnsBlock() {
+  const c = selectedClient;
+  document.getElementById('dns-block').innerHTML = c.dns_verified ? `
+    <div class="dns-card verified">
+      <div style="color:var(--green);font-weight:600;margin-bottom:10px">✓ Domínio verificado</div>
+      <div class="dns-row"><span class="dns-key">Domínio</span><span class="dns-val">${c.domain}</span></div>
+    </div>
+  ` : `
+    <div class="dns-card">
+      <p style="color:var(--yellow);font-weight:500;margin-bottom:12px">Adicione este registro TXT no DNS do cliente</p>
+      <div class="dns-row"><span class="dns-key">Tipo</span><span class="dns-val">TXT</span></div>
+      <div class="dns-row"><span class="dns-key">Host</span><span class="dns-val">_konverta-verify.${c.domain}</span></div>
+      <div class="dns-row"><span class="dns-key">Valor</span><span class="dns-val">${c.dns_token}</span></div>
+      <p style="color:var(--text3);font-size:12px;margin-top:10px">A propagação de DNS pode levar até 24h.</p>
+    </div>
+  `;
+}
+
+async function verifyDns() {
+  const el = document.getElementById('dns-verify-result');
+  el.textContent = 'Verificando...';
+  const data = await apiFetch(`/api/admin/clients/${selectedClient.id}/verify-dns`, { method: 'POST' });
+  if (data.verified) {
+    selectedClient.dns_verified = 1;
+    renderDnsBlock();
+    el.textContent = '';
+    toast('DNS verificado com sucesso!', 'success');
+  } else {
+    el.textContent = 'Registro não encontrado ainda. Verifique o DNS e tente novamente.';
+  }
+}
+
+async function createClient() {
+  const name = document.getElementById('new-name').value.trim();
+  const domain = document.getElementById('new-domain').value.trim();
+  if (!name || !domain) { toast('Preencha nome e domínio.'); return; }
+
+  const data = await apiFetch('/api/admin/clients', {
+    method: 'POST',
+    body: JSON.stringify({ name, domain }),
+  });
+
+  if (data.error) { toast('Erro: ' + data.error); return; }
+
+  toast('Cliente criado!', 'success');
+  clients.unshift(data.client);
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-domain').value = '';
+  openClient(data.client.id);
+}
+
+// ── Platforms ──────────────────────────────────────────────
+function selectPlatform(p) {
+  currentPlatform = p;
+  document.querySelectorAll('.platform-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  ['meta','ga4','google_ads','tiktok'].forEach(pl => {
+    document.getElementById('platform-form-' + pl).style.display = pl === p ? 'block' : 'none';
+  });
+}
+
+async function savePlatform() {
+  if (!selectedClient) return;
+  const payload = { platform: currentPlatform };
+
+  if (currentPlatform === 'meta') {
+    payload.pixel_id = document.getElementById('meta-pixel-id').value.trim();
+    payload.access_token = document.getElementById('meta-access-token').value.trim();
+    payload.test_event_code = document.getElementById('meta-test-code').value.trim();
+  } else if (currentPlatform === 'ga4') {
+    payload.measurement_id = document.getElementById('ga4-measurement-id').value.trim();
+    payload.api_secret = document.getElementById('ga4-api-secret').value.trim();
+  } else if (currentPlatform === 'google_ads') {
+    payload.conversion_id = document.getElementById('gads-conversion-id').value.trim();
+    payload.conversion_label = document.getElementById('gads-conversion-label').value.trim();
+  } else if (currentPlatform === 'tiktok') {
+    payload.tiktok_pixel_id = document.getElementById('tiktok-pixel-id').value.trim();
+    payload.tiktok_access_token = document.getElementById('tiktok-access-token').value.trim();
+  }
+
+  await apiFetch(`/api/admin/clients/${selectedClient.id}/platforms`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  toast('Credenciais salvas!', 'success');
+}
+
+// ── Pages ──────────────────────────────────────────────────
+function openPageModal() {
+  document.getElementById('page-name').value = '';
+  document.getElementById('page-event').value = 'Lead';
+  document.getElementById('page-url-pattern').value = '';
+  document.getElementById('page-html').value = '';
+  document.getElementById('parsed-fields').style.display = 'none';
+  parsedFields = [];
+  document.getElementById('overlay-page').classList.add('open');
+}
+
+function updatePageType() {
+  const type = document.getElementById('page-type').value;
+  document.getElementById('page-event').value = type === 'lead_form' ? 'Lead' : 'Purchase';
+}
+
+async function parseHtml() {
+  const html = document.getElementById('page-html').value.trim();
+  if (!html) { toast('Cole o HTML primeiro.'); return; }
+
+  const data = await apiFetch('/api/parse-form', {
+    method: 'POST',
+    body: JSON.stringify({ html }),
+  });
+
+  parsedFields = data.fields || [];
+
+  const container = document.getElementById('parsed-fields');
+  const list = document.getElementById('fields-list');
+
+  if (!parsedFields.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Nenhum campo reconhecido automaticamente. Verifique o HTML ou adicione manualmente.</div>';
+  } else {
+    list.innerHTML = parsedFields.map((f, i) => `
+      <div class="field-row">
+        <select class="form-input" style="padding:6px 8px;font-size:12px" onchange="parsedFields[${i}].field=this.value">
+          ${['email','phone','name','last_name','cpf','value','order_id','city','state'].map(o =>
+            `<option value="${o}" ${f.field===o?'selected':''}>${o}</option>`
+          ).join('')}
+        </select>
+        <input class="form-input" style="padding:6px 10px;font-size:12px;font-family:var(--mono)" value="${f.selector}" onchange="parsedFields[${i}].selector=this.value">
+        <span class="field-type">${f.label || f.type}</span>
+        <button class="btn btn-danger btn-sm" onclick="parsedFields.splice(${i},1);parseHtml()">×</button>
+      </div>
+    `).join('');
+  }
+
+  container.style.display = 'block';
+}
+
+async function savePage() {
+  if (!selectedClient) return;
+  const payload = {
+    name: document.getElementById('page-name').value.trim(),
+    page_type: document.getElementById('page-type').value,
+    event_name: document.getElementById('page-event').value.trim() || 'Lead',
+    url_pattern: document.getElementById('page-url-pattern').value.trim(),
+    field_map: JSON.stringify(parsedFields),
+    source_html: document.getElementById('page-html').value.trim(),
+  };
+  if (!payload.name) { toast('Dê um nome para a página.'); return; }
+
+  await apiFetch(`/api/admin/clients/${selectedClient.id}/pages`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  closeOverlay('overlay-page');
+  toast('Página salva!', 'success');
+  loadPages();
+}
+
+async function loadPages() {
+  if (!selectedClient) return;
+  const data = await apiFetch(`/api/admin/clients/${selectedClient.id}/pages`);
+  const pages = data.pages || [];
+  const el = document.getElementById('pages-list');
+
+  if (!pages.length) {
+    el.innerHTML = '<div class="loading">Nenhuma página configurada. Clique em "+ Página de conversão" para começar.</div>';
+    return;
+  }
+
+  el.innerHTML = pages.map(p => `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <span style="font-weight:600">${p.name}</span>
+          <span class="badge badge-green" style="margin-left:10px">${p.event_name}</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deletePage(${p.id})">Remover</button>
+      </div>
+      ${p.url_pattern ? `<div style="font-size:12px;color:var(--text2)">URL: <code style="font-family:var(--mono)">${p.url_pattern}</code></div>` : ''}
+      ${p.field_map ? (() => {
+        try {
+          const fields = JSON.parse(p.field_map);
+          return `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">${fields.map(f =>
+            `<span style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:11.5px;font-family:var(--mono);color:var(--accent)">${f.field}</span>`
+          ).join('')}</div>`;
+        } catch { return ''; }
+      })() : ''}
+    </div>
+  `).join('');
+}
+
+async function deletePage(id) {
+  if (!confirm('Remover esta página de conversão?')) return;
+  await apiFetch(`/api/admin/clients/${selectedClient.id}/pages/${id}`, { method: 'DELETE' });
+  toast('Página removida.');
+  loadPages();
+}
+
+// ── Webhooks ───────────────────────────────────────────────
+function openWebhookModal() {
+  document.getElementById('wh-result').style.display = 'none';
+  document.getElementById('overlay-webhook').classList.add('open');
+}
+
+async function generateWebhook() {
+  if (!selectedClient) return;
+  const platform = document.getElementById('wh-platform').value;
+  const data = await apiFetch(`/api/admin/clients/${selectedClient.id}/webhooks`, {
+    method: 'POST',
+    body: JSON.stringify({ platform }),
+  });
+
+  if (data.url) {
+    document.getElementById('wh-url').textContent = data.url;
+    document.getElementById('wh-result').style.display = 'block';
+    document.getElementById('wh-btn').textContent = 'Gerar nova URL';
+  }
+}
+
+function copyWebhookUrl() {
+  const url = document.getElementById('wh-url').textContent;
+  navigator.clipboard.writeText(url);
+  toast('URL copiada!', 'success');
+}
+
+async function loadWebhooks() {
+  if (!selectedClient) return;
+  const data = await apiFetch(`/api/admin/clients/${selectedClient.id}/webhooks`);
+  const webhooks = data.webhooks || [];
+  const el = document.getElementById('webhooks-list');
+
+  if (!webhooks.length) {
+    el.innerHTML = '<div class="loading">Nenhum webhook configurado. Clique em "+ Webhook" para gerar uma URL.</div>';
+    return;
+  }
+
+  el.innerHTML = webhooks.map(w => `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-weight:600;text-transform:capitalize">${w.platform}</span>
+        <span class="badge ${w.enabled ? 'badge-green' : 'badge-red'}"><span class="dot"></span>${w.enabled ? 'Ativo' : 'Inativo'}</span>
+      </div>
+      <div class="snippet-box" onclick="navigator.clipboard.writeText(this.textContent);toast('Copiado!','success')" style="font-size:11.5px">https://${PLATFORM_DOMAIN}/webhook/${w.platform}/${w.slug}</div>
+    </div>
+  `).join('');
+}
+
+// ── Settings ───────────────────────────────────────────────
+function saveSettings() {
+  const domain = document.getElementById('settings-domain').value.trim();
+  if (domain) { PLATFORM_DOMAIN = domain; localStorage.setItem('kv_domain', domain); }
+  toast('Configurações salvas!', 'success');
+}
+
+// ── Utilities ──────────────────────────────────────────────
+function copySnippet() {
+  const text = document.getElementById('snippet-code').textContent;
+  navigator.clipboard.writeText(text);
+  toast('Snippet copiado!', 'success');
+}
+
+async function downloadGTM() {
+  if (!selectedClient) return;
+  toast('Gerando export GTM...');
+  try {
+    const url = `/api/admin/clients/${selectedClient.id}/gtm-export?key=${API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) { toast('Erro ao gerar GTM'); return; }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `GTM-Konverta-${selectedClient.name.replace(/\s+/g,'-')}.json`;
+    a.click();
+    toast('GTM exportado!', 'success');
+  } catch (e) { toast('Erro: ' + e.message); }
+}
+
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type === 'success' ? 'success' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Init ───────────────────────────────────────────────────
+document.getElementById('settings-domain').value = PLATFORM_DOMAIN;
+loadClients();
+</script>
+</body>
+</html>
